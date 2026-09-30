@@ -28,6 +28,6 @@ describe('GET /health', () => {
   it('returns ok', async () => {
     const response = await fetch(url);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
+    expect(await response.json()).toEqual({ ok: true, db: 'ok' });
   });
 });
