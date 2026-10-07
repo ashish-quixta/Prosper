@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { env } from './env';
 import { healthRouter } from './routes/health';
+import { instagramRouter } from './routes/instagram';
 
 const app = express();
 
@@ -13,12 +14,20 @@ app.use(
 );
 
 app.use(healthRouter);
+app.use(instagramRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const message = err instanceof Error ? err.message : 'Internal server error';
   console.error(err);
   res.status(500).json({ code: 'internal_error', message });
 });
+
+const missingInstagram = (['META_APP_SECRET', 'META_VERIFY_TOKEN', 'IG_ACCESS_TOKEN'] as const).filter(
+  (name) => !env[name],
+);
+if (missingInstagram.length > 0) {
+  console.error(`missing ${missingInstagram.join(', ')}`);
+}
 
 app.listen(env.PORT, () => {
   console.log(`listening on ${env.PORT}`);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/supabase';
 
 const WEB_CLIENT_ID = '1054808966862-j6rcnlo4dtciqq7cq0aoqgtu883han07.apps.googleusercontent.com';
@@ -37,20 +38,35 @@ export default function SignInScreen() {
   }
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Text style={{ fontSize: 24, marginBottom: 24 }}>Sign in</Text>
-      <Pressable
-        onPress={signInWithGoogle}
-        disabled={loading}
-        style={{ backgroundColor: '#111', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={{ color: '#fff' }}>Continue with Google</Text>
-        )}
-      </Pressable>
-      {error ? <Text style={{ color: '#b00020', marginTop: 16, textAlign: 'center' }}>{error}</Text> : null}
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+      <View className="flex-1 justify-center px-6">
+        <Pressable
+          onPress={signInWithGoogle}
+          disabled={loading}
+          className="h-14 flex-row items-center justify-center rounded-2xl border-2 border-blue-700 bg-white active:bg-blue-50 disabled:opacity-70"
+          style={{
+            shadowColor: '#1d4ed8',
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 2,
+          }}
+        >
+          {loading ? (
+            <ActivityIndicator color="#1d4ed8" />
+          ) : (
+            <>
+              <Image
+                source={require('../assets/images/google-logo.png')}
+                style={{ width: 22, height: 22 }}
+                accessibilityIgnoresInvertColors
+              />
+              <Text className="ml-3 text-base font-semibold text-slate-800">Continue with Google</Text>
+            </>
+          )}
+        </Pressable>
+        {error ? <Text className="mt-4 text-center text-sm text-red-700">{error}</Text> : null}
+      </View>
+    </SafeAreaView>
   );
 }

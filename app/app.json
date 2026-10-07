@@ -23,6 +23,7 @@
       "package": "com.prospor.app"
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
