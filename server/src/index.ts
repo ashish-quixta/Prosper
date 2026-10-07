@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { env } from './env';
 import { healthRouter } from './routes/health';
 import { instagramRouter } from './routes/instagram';
+import { legalRouter } from './routes/legal';
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(
 );
 
 app.use(healthRouter);
+app.use(legalRouter);
 app.use(instagramRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

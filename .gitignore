@@ -7,3 +7,4 @@ dist/
 *.log
 .DS_Store
 coverage/
+.cursor/plans/summary_model_choice_f8d10bde.plan.md
