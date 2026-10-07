@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs';
 import { z } from 'zod';
 
-process.loadEnvFile();
+if (existsSync('.env')) {
+  process.loadEnvFile();
+}
 
 const EnvSchema = z.object({
   SUPABASE_URL: z.string().min(1),
