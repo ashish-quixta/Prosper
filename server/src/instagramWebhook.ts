@@ -4,6 +4,7 @@ import { z } from 'zod';
 const MediaPayload = z.object({
   url: z.string().min(1).optional(),
   title: z.string().optional(),
+  reel_video_id: z.union([z.string(), z.number()]).optional(),
 });
 
 const Attachment = z.object({
@@ -38,6 +39,7 @@ export type ReelAttachment = {
   type: 'ig_reel' | 'ig_post';
   url: string;
   title: string | null;
+  hasReelVideoId: boolean;
 };
 
 export type InboundInstagramMessage = {
@@ -97,6 +99,7 @@ function reelAttachment(attachments: z.infer<typeof Attachment>[] | undefined): 
     type: match.type as 'ig_reel' | 'ig_post',
     url,
     title: match.payload?.title ?? null,
+    hasReelVideoId: match.payload?.reel_video_id !== undefined,
   };
 }
 

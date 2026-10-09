@@ -1,5 +1,5 @@
 import { env } from './env';
-import { fetchReelFileUrl, isInstagramPage } from './instagramAttachment';
+import { fetchReelFileUrl, isInstagramPage, urlHost } from './instagramAttachment';
 import {
   linkCodeFromText,
   readInboundMessages,
@@ -51,6 +51,12 @@ async function processMessage(message: InboundInstagramMessage, body: unknown): 
   }
 
   if (message.media) {
+    console.log('instagram webhook media', {
+      mid: message.mid,
+      type: message.media.type,
+      host: urlHost(message.media.url),
+      hasReelVideoId: message.media.hasReelVideoId,
+    });
     const userId = await linkedUserId(message.senderId);
     if (!userId) {
       await reply(message.senderId, replies.unlinked);

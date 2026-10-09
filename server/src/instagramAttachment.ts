@@ -1,6 +1,16 @@
 const GRAPH_VERSION = 'v26.0';
 
 const FILE_FIELDS = 'attachments{file_url,mime_type,name,video_data{url},image_data{url}}';
+const SHARE_FIELDS = 'shares{id,type,url}';
+
+export type GraphMessageShape = {
+  keys: string[];
+  attachmentCount: number;
+  shareCount: number;
+  types: string[];
+  mimes: string[];
+  hosts: string[];
+};
 
 export function isInstagramPage(url: string): boolean {
   try {
@@ -17,12 +27,59 @@ export function fileUrlFromGraphMessage(body: unknown): string | null {
   return urls[0] ?? null;
 }
 
+export function describeGraphMessage(body: unknown): GraphMessageShape {
+  const root = asRecord(body);
+  const attachments = listedRecords(root, 'attachments');
+  const shares = listedRecords(root, 'shares');
+  const items = [...attachments, ...shares];
+  return {
+    keys: root ? Object.keys(root) : [],
+    attachmentCount: attachments.length,
+    shareCount: shares.length,
+    types: unique(items.map((item) => textField(item, 'type'))),
+    mimes: unique(items.map((item) => textField(item, 'mime_type'))),
+    hosts: unique(collectUrls(body).map((url) => urlHost(url))),
+  };
+}
+
 export async function fetchReelFileUrl(
   mid: string,
   accessToken: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string | null> {
-  const endpoint = `https://graph.instagram.com/${GRAPH_VERSION}/${encodeURIComponent(mid)}?fields=${encodeURIComponent(FILE_FIELDS)}`;
+  const attachmentBody = await graphMessage(mid, FILE_FIELDS, accessToken, fetchImpl, 'instagram attachment lookup failed');
+  if (!attachmentBody) return null;
+
+  const fileUrl = fileUrlFromGraphMessage(attachmentBody);
+  console.log('instagram attachment lookup', {
+    mid,
+    found: Boolean(fileUrl),
+    host: fileUrl ? urlHost(fileUrl) : null,
+    ...describeGraphMessage(attachmentBody),
+  });
+  if (fileUrl) return fileUrl;
+
+  const shareBody = await graphMessage(mid, SHARE_FIELDS, accessToken, fetchImpl, 'instagram share lookup failed');
+  if (!shareBody) return null;
+
+  const shareUrl = fileUrlFromGraphMessage(shareBody);
+  console.log('instagram share lookup', {
+    mid,
+    found: Boolean(shareUrl),
+    host: shareUrl ? urlHost(shareUrl) : null,
+    ...describeGraphMessage(shareBody),
+  });
+  return shareUrl;
+}
+
+async function graphMessage(
+  mid: string,
+  fields: string,
+  accessToken: string,
+  fetchImpl: typeof fetch,
+  failureLabel: string,
+): Promise<unknown | null> {
+  const endpoint = `https://graph.instagram.com/${GRAPH_VERSION}/${encodeURIComponent(mid)}?fields=${encodeURIComponent(fields)}`;
   let response: Response;
   try {
     response = await fetchImpl(endpoint, {
@@ -31,22 +88,16 @@ export async function fetchReelFileUrl(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('instagram attachment lookup failed', { mid, message });
+    console.error(failureLabel, { mid, message });
     return null;
   }
 
   if (!response.ok) {
-    console.error('instagram attachment lookup failed', { mid, status: response.status });
+    console.error(failureLabel, { mid, status: response.status });
     return null;
   }
 
-  const fileUrl = fileUrlFromGraphMessage(await response.json());
-  console.log('instagram attachment lookup', {
-    mid,
-    found: Boolean(fileUrl),
-    host: fileUrl ? safeHost(fileUrl) : null,
-  });
-  return fileUrl;
+  return response.json();
 }
 
 function collectUrls(value: unknown, found: string[] = []): string[] {
@@ -81,10 +132,34 @@ function mediaRank(url: string): number {
   return 2;
 }
 
-function safeHost(url: string): string {
+export function urlHost(url: string): string | null {
   try {
     return new URL(url).host;
   } catch {
-    return 'unknown';
+    return null;
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function listedRecords(root: Record<string, unknown> | null, key: string): Record<string, unknown>[] {
+  const value = root?.[key];
+  const data = Array.isArray(value) ? value : asRecord(value)?.data;
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((entry) => {
+    const record = asRecord(entry);
+    return record ? [record] : [];
+  });
+}
+
+function textField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function unique(values: Array<string | null>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }

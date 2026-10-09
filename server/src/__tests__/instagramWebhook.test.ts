@@ -78,7 +78,7 @@ describe('readInboundMessages', () => {
         mid: 'm-reel',
         echo: false,
         text: null,
-        media: { type: 'ig_reel', url: 'https://example.com/reel.mp4', title: 'A caption' },
+        media: { type: 'ig_reel', url: 'https://example.com/reel.mp4', title: 'A caption', hasReelVideoId: false },
       },
     ]);
     expect(linkCodeFromText(' ab23cd ')).toBe('AB23CD');
