@@ -3,6 +3,7 @@ import { env } from './env';
 import { healthRouter } from './routes/health';
 import { instagramRouter } from './routes/instagram';
 import { legalRouter } from './routes/legal';
+import { startWorker } from './worker/loop';
 
 const app = express();
 
@@ -31,6 +32,12 @@ if (missingInstagram.length > 0) {
   console.error(`missing ${missingInstagram.join(', ')}`);
 }
 
+const missingGemini = (['GEMINI_API_KEY', 'GEMINI_MODEL', 'GEMINI_MODEL_LITE'] as const).filter((name) => !env[name]);
+if (missingGemini.length > 0) {
+  console.error(`missing ${missingGemini.join(', ')}`);
+}
+
 app.listen(env.PORT, () => {
   console.log(`listening on ${env.PORT}`);
+  startWorker();
 });

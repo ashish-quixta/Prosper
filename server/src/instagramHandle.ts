@@ -1,4 +1,5 @@
 import { env } from './env';
+import { fetchReelFileUrl, isInstagramPage } from './instagramAttachment';
 import {
   linkCodeFromText,
   readInboundMessages,
@@ -55,7 +56,8 @@ async function processMessage(message: InboundInstagramMessage, body: unknown): 
       await reply(message.senderId, replies.unlinked);
       return;
     }
-    const saved = await saveReel(userId, message.media.url, message.media.title);
+    const media = await reelMedia(message.mid, message.media.url);
+    const saved = await saveReel(userId, media.mediaUrl, message.media.title, media.sourceUrl);
     if (saved) await reply(message.senderId, replies.saved);
     return;
   }
@@ -133,16 +135,33 @@ async function linkedUserId(instagramId: string): Promise<string | null> {
   return data?.user_id ? String(data.user_id) : null;
 }
 
-async function saveReel(userId: string, mediaUrl: string, title: string | null): Promise<boolean> {
+async function reelMedia(mid: string | null, pageOrFileUrl: string): Promise<{ mediaUrl: string; sourceUrl: string | null }> {
+  if (!isInstagramPage(pageOrFileUrl) || !mid || !env.IG_ACCESS_TOKEN) {
+    return { mediaUrl: pageOrFileUrl, sourceUrl: isInstagramPage(pageOrFileUrl) ? pageOrFileUrl : null };
+  }
+
+  const fileUrl = await fetchReelFileUrl(mid, env.IG_ACCESS_TOKEN);
+  if (!fileUrl) return { mediaUrl: pageOrFileUrl, sourceUrl: pageOrFileUrl };
+  return { mediaUrl: fileUrl, sourceUrl: pageOrFileUrl };
+}
+
+async function saveReel(
+  userId: string,
+  mediaUrl: string,
+  title: string | null,
+  sourceUrl: string | null,
+): Promise<boolean> {
   const { error } = await supabase.from('items').insert({
     user_id: userId,
     platform: 'instagram',
     capture_method: 'bot',
     media_url: mediaUrl,
+    source_url: sourceUrl,
     caption: title,
     status: 'saving',
   });
   if (error) {
+    if (error.code === '23505') return true;
     console.error('instagram reel insert failed', { userId, message: error.message });
     return false;
   }
