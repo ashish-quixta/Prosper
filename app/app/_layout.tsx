@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { ShareIntentProvider } from 'expo-share-intent';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { OpeningScreen } from '@/components/OpeningScreen';
+import { IncomingScreenshot } from '@/share';
 import { supabase } from '@/supabase';
 import '../global.css';
 
@@ -49,23 +51,26 @@ export default function RootLayout() {
 
   return (
     <View className="flex-1">
-      <QueryClientProvider client={queryClient}>
-        <AuthGate>
-          <StatusBar style={showIntro ? 'light' : 'dark'} />
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: '#ffffff' },
-              headerShadowVisible: false,
-              headerTintColor: '#1d4ed8',
-              headerTitleStyle: { color: '#0f172a', fontWeight: '600' },
-              contentStyle: { backgroundColor: '#ffffff' },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-          </Stack>
-        </AuthGate>
-      </QueryClientProvider>
+      <ShareIntentProvider options={{ resetOnBackground: false }}>
+        <QueryClientProvider client={queryClient}>
+          <AuthGate>
+            <IncomingScreenshot />
+            <StatusBar style={showIntro ? 'light' : 'dark'} />
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: '#ffffff' },
+                headerShadowVisible: false,
+                headerTintColor: '#1d4ed8',
+                headerTitleStyle: { color: '#0f172a', fontWeight: '600' },
+                contentStyle: { backgroundColor: '#ffffff' },
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+            </Stack>
+          </AuthGate>
+        </QueryClientProvider>
+      </ShareIntentProvider>
       {showIntro ? <OpeningScreen onFinish={() => setShowIntro(false)} /> : null}
     </View>
   );

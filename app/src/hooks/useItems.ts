@@ -3,20 +3,21 @@ import { supabase } from '@/supabase';
 import { savedItemFromRow, type SavedItem } from '@/savedItem';
 
 const pageSize = 30;
-const columns = 'id, platform, source_url, caption, status, title, summary, key_points, tags, created_at';
+const columns =
+  'id, platform, capture_method, source_url, caption, status, title, summary, key_points, tags, created_at';
 
-export function useItems() {
+export type HomeSection = 'screenshot' | 'instagram';
+
+export function useItems(section: HomeSection) {
   return useInfiniteQuery({
-    queryKey: ['items'],
+    queryKey: ['items', section],
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<SavedItem[]> => {
       const from = pageParam * pageSize;
       const to = from + pageSize - 1;
-      const { data, error } = await supabase
-        .from('items')
-        .select(columns)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      let query = supabase.from('items').select(columns).order('created_at', { ascending: false });
+      query = section === 'screenshot' ? query.eq('capture_method', 'screenshot') : query.eq('platform', 'instagram');
+      const { data, error } = await query.range(from, to);
       if (error) throw new Error(error.message);
       return (data ?? []).map((row) => savedItemFromRow(row));
     },

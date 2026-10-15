@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeGraphMessage, fetchReelFileUrl, fileUrlFromGraphMessage, isInstagramPage } from '../instagramAttachment';
+import { describeGraphMessage, fetchReelFileUrl, fetchReelMediaUrl, fileUrlFromGraphMessage, isInstagramPage } from '../instagramAttachment';
 
 describe('isInstagramPage', () => {
   it('recognises a reel page and ignores a file host', () => {
@@ -96,5 +96,21 @@ describe('fetchReelFileUrl', () => {
     await expect(fetchReelFileUrl('mid-1', 'token', fetchImpl)).resolves.toBe(
       'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=4',
     );
+  });
+});
+
+describe('fetchReelMediaUrl', () => {
+  it('returns the media file and ignores a reel page', async () => {
+    const fileFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ media_type: 'VIDEO', media_url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=8' }), {
+        status: 200,
+      });
+    const pageFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ media_type: 'VIDEO', media_url: 'https://www.instagram.com/reel/abc/' }), { status: 200 });
+
+    await expect(fetchReelMediaUrl('99', 'token', fileFetch)).resolves.toBe(
+      'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=8',
+    );
+    await expect(fetchReelMediaUrl('99', 'token', pageFetch)).resolves.toBeNull();
   });
 });

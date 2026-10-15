@@ -2,6 +2,7 @@ const GRAPH_VERSION = 'v26.0';
 
 const FILE_FIELDS = 'attachments{file_url,mime_type,name,video_data{url},image_data{url}}';
 const SHARE_FIELDS = 'shares{id,type,url}';
+const MEDIA_FIELDS = 'media_type,media_url';
 
 export type GraphMessageShape = {
   keys: string[];
@@ -48,16 +49,16 @@ export async function fetchReelFileUrl(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string | null> {
   const attachmentBody = await graphMessage(mid, FILE_FIELDS, accessToken, fetchImpl, 'instagram attachment lookup failed');
-  if (!attachmentBody) return null;
-
-  const fileUrl = fileUrlFromGraphMessage(attachmentBody);
-  console.log('instagram attachment lookup', {
-    mid,
-    found: Boolean(fileUrl),
-    host: fileUrl ? urlHost(fileUrl) : null,
-    ...describeGraphMessage(attachmentBody),
-  });
-  if (fileUrl) return fileUrl;
+  if (attachmentBody) {
+    const fileUrl = fileUrlFromGraphMessage(attachmentBody);
+    console.log('instagram attachment lookup', {
+      mid,
+      found: Boolean(fileUrl),
+      host: fileUrl ? urlHost(fileUrl) : null,
+      ...describeGraphMessage(attachmentBody),
+    });
+    if (fileUrl) return fileUrl;
+  }
 
   const shareBody = await graphMessage(mid, SHARE_FIELDS, accessToken, fetchImpl, 'instagram share lookup failed');
   if (!shareBody) return null;
@@ -70,6 +71,25 @@ export async function fetchReelFileUrl(
     ...describeGraphMessage(shareBody),
   });
   return shareUrl;
+}
+
+export async function fetchReelMediaUrl(
+  mediaId: string,
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  const body = await graphMessage(mediaId, MEDIA_FIELDS, accessToken, fetchImpl, 'instagram reel media lookup failed');
+  if (!body) return null;
+
+  const fileUrl = fileUrlFromGraphMessage(body);
+  const mediaType = asRecord(body)?.media_type;
+  console.log('instagram reel media lookup', {
+    found: Boolean(fileUrl),
+    host: fileUrl ? urlHost(fileUrl) : null,
+    mediaType: typeof mediaType === 'string' ? mediaType : null,
+    hosts: describeGraphMessage(body).hosts,
+  });
+  return fileUrl;
 }
 
 async function graphMessage(
@@ -93,7 +113,8 @@ async function graphMessage(
   }
 
   if (!response.ok) {
-    console.error(failureLabel, { mid, status: response.status });
+    const detail = await response.json().catch(() => null);
+    console.error(failureLabel, { mid, status: response.status, ...graphError(detail) });
     return null;
   }
 
@@ -158,6 +179,16 @@ function listedRecords(root: Record<string, unknown> | null, key: string): Recor
 function textField(record: Record<string, unknown>, key: string): string | null {
   const value = record[key];
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function graphError(body: unknown): { code: number | null; subcode: number | null; message: string | null } {
+  const error = asRecord(asRecord(body)?.error);
+  const message = error?.message;
+  return {
+    code: typeof error?.code === 'number' ? error.code : null,
+    subcode: typeof error?.error_subcode === 'number' ? error.error_subcode : null,
+    message: typeof message === 'string' ? message.replace(/https?:\/\/\S+/g, '[link]').slice(0, 180) : null,
+  };
 }
 
 function unique(values: Array<string | null>): string[] {

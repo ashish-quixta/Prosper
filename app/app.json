@@ -30,6 +30,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["image/*"],
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsImageWithMaxCount": 1
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

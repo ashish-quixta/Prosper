@@ -1,16 +1,40 @@
-import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
 import { ItemCard } from '@/components/ItemCard';
-import { useItems } from '@/hooks/useItems';
+import { useItems, type HomeSection } from '@/hooks/useItems';
+import { saveScreenshot } from '@/saveScreenshot';
 import type { SavedItem } from '@/savedItem';
 
 export default function HomeScreen() {
-  const itemsQuery = useItems();
-  const items = useMemo(
-    () => itemsQuery.data?.pages.flat() ?? [],
-    [itemsQuery.data],
-  );
+  const [section, setSection] = useState<HomeSection>('screenshot');
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const screenshots = useItems('screenshot');
+  const instagram = useItems('instagram');
+  const itemsQuery = section === 'screenshot' ? screenshots : instagram;
+  const items = useMemo(() => itemsQuery.data?.pages.flat() ?? [], [itemsQuery.data]);
+
+  async function choosePhoto() {
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+
+    setSaving(true);
+    try {
+      await saveScreenshot(picked.assets[0].uri);
+      await queryClient.invalidateQueries({ queryKey: ['items'] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The photo could not be saved';
+      Alert.alert('Could not save', message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (itemsQuery.isPending) {
     return (
@@ -40,7 +64,32 @@ export default function HomeScreen() {
         paddingBottom: 24,
       }}
       style={{ flex: 1, backgroundColor: '#ffffff' }}
-      ListEmptyComponent={<EmptyLibrary />}
+      ListHeaderComponent={
+        <View className="mb-4">
+          <SectionSwitch section={section} onChange={setSection} />
+          {section === 'screenshot' ? (
+            <Pressable
+              onPress={() => {
+                void choosePhoto();
+              }}
+              disabled={saving}
+              className="mt-4 items-center rounded-2xl bg-blue-700 px-4 py-3 active:bg-blue-800"
+            >
+              {saving ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-base font-semibold text-white">Choose a photo</Text>
+              )}
+            </Pressable>
+          ) : null}
+          <Text className="mt-3 text-center text-sm leading-5 text-slate-500">
+            {section === 'screenshot'
+              ? 'Or share a photo to PROSPOR from another app.'
+              : 'Reels you send to the Instagram bot show up here.'}
+          </Text>
+        </View>
+      }
+      ListEmptyComponent={<EmptySection section={section} />}
       refreshControl={
         <RefreshControl
           refreshing={itemsQuery.isRefetching && !itemsQuery.isFetchingNextPage}
@@ -64,16 +113,46 @@ export default function HomeScreen() {
   );
 }
 
-function EmptyLibrary() {
+function SectionSwitch({
+  section,
+  onChange,
+}: {
+  section: HomeSection;
+  onChange: (section: HomeSection) => void;
+}) {
   return (
-    <View className="flex-1 items-center justify-center px-4">
+    <View className="flex-row rounded-2xl bg-blue-50 p-1">
+      <SectionButton label="Screenshot" selected={section === 'screenshot'} onPress={() => onChange('screenshot')} />
+      <SectionButton label="Instagram" selected={section === 'instagram'} onPress={() => onChange('instagram')} />
+    </View>
+  );
+}
+
+function SectionButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} className={`flex-1 rounded-xl py-2 ${selected ? 'bg-white' : ''}`}>
+      <Text className={`text-center text-sm font-semibold ${selected ? 'text-blue-700' : 'text-slate-500'}`}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function EmptySection({ section }: { section: HomeSection }) {
+  const screenshot = section === 'screenshot';
+  return (
+    <View className="items-center px-4 py-8">
       <View className="items-center rounded-3xl border border-blue-100 bg-blue-50 px-6 py-10">
         <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-white">
-          <Ionicons name="bookmark-outline" size={28} color="#1d4ed8" />
+          <Ionicons name={screenshot ? 'image-outline' : 'logo-instagram'} size={28} color="#1d4ed8" />
         </View>
-        <Text className="text-center text-lg font-semibold text-slate-900">Nothing saved yet</Text>
+        <Text className="text-center text-lg font-semibold text-slate-900">
+          {screenshot ? 'No screenshots yet' : 'No Instagram saves yet'}
+        </Text>
         <Text className="mt-2 text-center text-base leading-6 text-slate-500">
-          Saves will show up here.
+          {screenshot
+            ? 'Choose a photo, or share one into PROSPOR. The summary appears on the card.'
+            : 'Send a reel to the bot. It will show up here.'}
         </Text>
       </View>
     </View>

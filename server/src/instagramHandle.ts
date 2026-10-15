@@ -1,8 +1,9 @@
 import { env } from './env';
-import { fetchReelFileUrl, isInstagramPage, urlHost } from './instagramAttachment';
+import { fetchReelFileUrl, fetchReelMediaUrl, isInstagramPage, urlHost } from './instagramAttachment';
 import {
   linkCodeFromText,
   readInboundMessages,
+  webhookAttachmentFields,
   type InboundInstagramMessage,
 } from './instagramWebhook';
 import { supabase } from './supabase';
@@ -56,13 +57,14 @@ async function processMessage(message: InboundInstagramMessage, body: unknown): 
       type: message.media.type,
       host: urlHost(message.media.url),
       hasReelVideoId: message.media.hasReelVideoId,
+      fields: webhookAttachmentFields(body, message.mid),
     });
     const userId = await linkedUserId(message.senderId);
     if (!userId) {
       await reply(message.senderId, replies.unlinked);
       return;
     }
-    const media = await reelMedia(message.mid, message.media.url);
+    const media = await reelMedia(message.mid, message.media.url, message.media.reelVideoId);
     const saved = await saveReel(userId, media.mediaUrl, message.media.title, media.sourceUrl);
     if (saved) await reply(message.senderId, replies.saved);
     return;
@@ -141,14 +143,27 @@ async function linkedUserId(instagramId: string): Promise<string | null> {
   return data?.user_id ? String(data.user_id) : null;
 }
 
-async function reelMedia(mid: string | null, pageOrFileUrl: string): Promise<{ mediaUrl: string; sourceUrl: string | null }> {
-  if (!isInstagramPage(pageOrFileUrl) || !mid || !env.IG_ACCESS_TOKEN) {
-    return { mediaUrl: pageOrFileUrl, sourceUrl: isInstagramPage(pageOrFileUrl) ? pageOrFileUrl : null };
+async function reelMedia(
+  mid: string | null,
+  pageOrFileUrl: string,
+  reelVideoId: string | null,
+): Promise<{ mediaUrl: string; sourceUrl: string | null }> {
+  const sourceUrl = isInstagramPage(pageOrFileUrl) ? pageOrFileUrl : null;
+  if (!isInstagramPage(pageOrFileUrl) || !env.IG_ACCESS_TOKEN) {
+    return { mediaUrl: pageOrFileUrl, sourceUrl };
   }
 
-  const fileUrl = await fetchReelFileUrl(mid, env.IG_ACCESS_TOKEN);
-  if (!fileUrl) return { mediaUrl: pageOrFileUrl, sourceUrl: pageOrFileUrl };
-  return { mediaUrl: fileUrl, sourceUrl: pageOrFileUrl };
+  if (mid) {
+    const fileUrl = await fetchReelFileUrl(mid, env.IG_ACCESS_TOKEN);
+    if (fileUrl) return { mediaUrl: fileUrl, sourceUrl: pageOrFileUrl };
+  }
+
+  if (reelVideoId) {
+    const mediaUrl = await fetchReelMediaUrl(reelVideoId, env.IG_ACCESS_TOKEN);
+    if (mediaUrl) return { mediaUrl, sourceUrl: pageOrFileUrl };
+  }
+
+  return { mediaUrl: pageOrFileUrl, sourceUrl: pageOrFileUrl };
 }
 
 async function saveReel(

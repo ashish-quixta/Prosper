@@ -1,6 +1,7 @@
-import { summarizeCaption, summarizeReel } from '../ai/summarize';
+import { summarizeCaption, summarizeReel, summarizeScreenshot } from '../ai/summarize';
 import { statusFromUnderstanding, type Summary } from '../ai/summary';
 import { downloadReel } from '../sources/reel';
+import { deleteScreenshot, downloadScreenshot } from '../sources/screenshot';
 import { supabase } from '../supabase';
 import { errorMessage, failureStatus, limitedCaptionReason, reelFallback } from './errors';
 
@@ -8,12 +9,18 @@ export type ClaimedItem = {
   id: string;
   attempts: number;
   media_url: string | null;
+  image_path: string | null;
   caption: string | null;
 };
 
 const skipped = new Set<string>();
 
 export async function processItem(item: ClaimedItem): Promise<void> {
+  if (item.image_path) {
+    await processScreenshot(item.id, item.image_path);
+    return;
+  }
+
   if (!item.media_url) {
     if (!skipped.has(item.id)) {
       skipped.add(item.id);
@@ -76,6 +83,34 @@ async function releaseItem(item: ClaimedItem): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+async function processScreenshot(itemId: string, imagePath: string): Promise<void> {
+  const jpeg = await downloadScreenshot(imagePath);
+  const summary = await summarizeScreenshot(itemId, jpeg);
+  if (!summary) {
+    const { error } = await supabase
+      .from('items')
+      .update({
+        status: 'limited',
+        title: 'Screenshot',
+        summary: 'A summary could not be read from this screenshot.',
+        error: 'The summary could not be read',
+        image_path: null,
+      })
+      .eq('id', itemId);
+    if (error) throw new Error(error.message);
+  } else {
+    const status = statusFromUnderstanding(summary.understanding);
+    await writeSummary(itemId, summary, status, status === 'limited' ? summary.missingReason : null, true);
+  }
+
+  try {
+    await deleteScreenshot(imagePath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('screenshot delete failed', { itemId, message });
+  }
+}
+
 async function saveCaptionSummary(itemId: string, caption: string): Promise<void> {
   const summary = await summarizeCaption(itemId, caption);
   if (!summary) {
@@ -101,6 +136,7 @@ async function writeSummary(
   summary: Summary,
   status: 'ready' | 'limited',
   error: string | null,
+  clearImage = false,
 ): Promise<void> {
   const { error: writeError } = await supabase
     .from('items')
@@ -112,6 +148,7 @@ async function writeSummary(
       tags: summary.tags,
       error,
       media_url: null,
+      ...(clearImage ? { image_path: null } : {}),
     })
     .eq('id', itemId);
   if (writeError) throw new Error(writeError.message);

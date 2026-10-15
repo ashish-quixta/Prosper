@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabase';
 import { savedItemFromRow } from '@/savedItem';
 
-const columns = 'id, platform, source_url, caption, status, title, summary, key_points, tags, created_at';
+const columns =
+  'id, platform, capture_method, source_url, caption, status, title, summary, key_points, tags, created_at';
 
 export function useItem(id: string) {
   return useQuery({

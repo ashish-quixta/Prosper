@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { linkCodeFromText, readInboundMessages, signatureIsValid, subscriptionChallenge } from '../instagramWebhook';
+import { linkCodeFromText, readInboundMessages, signatureIsValid, subscriptionChallenge, webhookAttachmentFields } from '../instagramWebhook';
 
 const secret = 'test-app-secret';
 const rawBody = Buffer.from('{"object":"instagram"}');
@@ -78,7 +78,13 @@ describe('readInboundMessages', () => {
         mid: 'm-reel',
         echo: false,
         text: null,
-        media: { type: 'ig_reel', url: 'https://example.com/reel.mp4', title: 'A caption', hasReelVideoId: false },
+        media: {
+          type: 'ig_reel',
+          url: 'https://example.com/reel.mp4',
+          title: 'A caption',
+          hasReelVideoId: false,
+          reelVideoId: null,
+        },
       },
     ]);
     expect(linkCodeFromText(' ab23cd ')).toBe('AB23CD');
@@ -102,5 +108,52 @@ describe('readInboundMessages', () => {
 
     expect(echo?.echo).toBe(true);
     expect(image?.media).toBeNull();
+  });
+
+  it('keeps the reel video id and prefers a file link over the public page', () => {
+    const body = {
+      entry: [
+        {
+          messaging: [
+            {
+              sender: { id: '2' },
+              message: {
+                mid: 'm-reel',
+                attachments: [
+                  {
+                    type: 'ig_reel',
+                    payload: {
+                      title: 'A caption',
+                      url: 'https://www.instagram.com/reel/abc/?secret=HIDDEN',
+                      reel_video_id: 99,
+                    },
+                  },
+                  {
+                    type: 'video',
+                    payload: { url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=HIDDEN' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const [message] = readInboundMessages(body);
+    expect(message?.media).toEqual({
+      type: 'video',
+      url: 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=HIDDEN',
+      title: 'A caption',
+      hasReelVideoId: true,
+      reelVideoId: '99',
+    });
+
+    const fields = webhookAttachmentFields(body, 'm-reel');
+    expect(fields).toEqual([
+      { type: 'ig_reel', keys: ['title', 'url', 'reel_video_id'], hosts: ['www.instagram.com'] },
+      { type: 'video', keys: ['url'], hosts: ['lookaside.fbsbx.com'] },
+    ]);
+    expect(JSON.stringify(fields)).not.toContain('HIDDEN');
   });
 });

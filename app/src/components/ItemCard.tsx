@@ -14,8 +14,10 @@ export function ItemCard({ item }: { item: SavedItem }) {
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
-          <PlatformMark platform={item.platform} />
-          <Text className="ml-2 text-sm font-medium text-slate-500">{platformLabel(item.platform)}</Text>
+          <PlatformMark platform={item.platform} screenshot={item.captureMethod === 'screenshot'} />
+          <Text className="ml-2 text-sm font-medium text-slate-500">
+            {item.captureMethod === 'screenshot' ? 'Screenshot' : platformLabel(item.platform)}
+          </Text>
         </View>
         <StatusBadge status={item.status} />
       </View>
@@ -39,7 +41,15 @@ export function ItemCard({ item }: { item: SavedItem }) {
   );
 }
 
-function PlatformMark({ platform }: { platform: Platform }) {
+function PlatformMark({ platform, screenshot }: { platform: Platform; screenshot: boolean }) {
+  if (screenshot) {
+    return (
+      <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">
+        <Ionicons name="image-outline" size={16} color="#1d4ed8" />
+      </View>
+    );
+  }
+
   if (platform === 'x') {
     return (
       <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">

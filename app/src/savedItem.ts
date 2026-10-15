@@ -1,9 +1,12 @@
 export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'other';
 export type ItemStatus = 'saving' | 'summarising' | 'ready' | 'limited' | 'failed';
 
+export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot';
+
 export type SavedItem = {
   id: string;
   platform: Platform;
+  captureMethod: CaptureMethod;
   sourceUrl: string | null;
   caption: string | null;
   status: ItemStatus;
@@ -14,9 +17,12 @@ export type SavedItem = {
   createdAt: string;
 };
 
+const captureMethods = new Set<CaptureMethod>(['share', 'paste', 'screenshot', 'bot']);
+
 type ItemRow = {
   id: string;
   platform: Platform;
+  capture_method: string;
   source_url: string | null;
   caption: string | null;
   status: ItemStatus;
@@ -34,6 +40,9 @@ export function savedItemFromRow(row: ItemRow): SavedItem {
   return {
     id: row.id,
     platform: platforms.has(row.platform) ? row.platform : 'other',
+    captureMethod: captureMethods.has(row.capture_method as CaptureMethod)
+      ? (row.capture_method as CaptureMethod)
+      : 'share',
     sourceUrl: row.source_url,
     caption: row.caption,
     status: statuses.has(row.status) ? row.status : 'saving',
@@ -49,6 +58,7 @@ export function itemHeading(item: SavedItem): string {
   if (item.title && item.title.trim().length > 0) return item.title;
   if (item.sourceUrl && item.sourceUrl.trim().length > 0) return item.sourceUrl;
   if (item.caption && item.caption.trim().length > 0) return item.caption;
+  if (item.captureMethod === 'screenshot') return 'Screenshot';
   return 'Saved post';
 }
 
