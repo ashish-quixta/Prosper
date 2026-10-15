@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { StatusBadge } from '@/components/StatusBadge';
-import { itemHeading, platformLabel, type Platform, type SavedItem } from '@/savedItem';
+import { itemHeading, platformLabel, type SavedItem } from '@/savedItem';
 
 export function ItemCard({ item }: { item: SavedItem }) {
   const router = useRouter();
@@ -14,10 +14,8 @@ export function ItemCard({ item }: { item: SavedItem }) {
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
-          <PlatformMark platform={item.platform} screenshot={item.captureMethod === 'screenshot'} />
-          <Text className="ml-2 text-sm font-medium text-slate-500">
-            {item.captureMethod === 'screenshot' ? 'Screenshot' : platformLabel(item.platform)}
-          </Text>
+          <PlatformMark item={item} />
+          <Text className="ml-2 text-sm font-medium text-slate-500">{cardLabel(item)}</Text>
         </View>
         <StatusBadge status={item.status} />
       </View>
@@ -41,15 +39,22 @@ export function ItemCard({ item }: { item: SavedItem }) {
   );
 }
 
-function PlatformMark({ platform, screenshot }: { platform: Platform; screenshot: boolean }) {
-  if (screenshot) {
+function cardLabel(item: SavedItem): string {
+  if (item.captureMethod === 'screenshot') return 'Screenshot';
+  if (item.captureMethod === 'pdf') return 'PDF';
+  return platformLabel(item.platform);
+}
+
+function PlatformMark({ item }: { item: SavedItem }) {
+  if (item.captureMethod === 'screenshot' || item.captureMethod === 'pdf') {
     return (
       <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">
-        <Ionicons name="image-outline" size={16} color="#1d4ed8" />
+        <Ionicons name={item.captureMethod === 'pdf' ? 'document-text-outline' : 'image-outline'} size={16} color="#1d4ed8" />
       </View>
     );
   }
 
+  const platform = item.platform;
   if (platform === 'x') {
     return (
       <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">

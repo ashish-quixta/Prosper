@@ -1,7 +1,7 @@
 export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'other';
 export type ItemStatus = 'saving' | 'summarising' | 'ready' | 'limited' | 'failed';
 
-export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot';
+export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot' | 'pdf';
 
 export type SavedItem = {
   id: string;
@@ -17,7 +17,7 @@ export type SavedItem = {
   createdAt: string;
 };
 
-const captureMethods = new Set<CaptureMethod>(['share', 'paste', 'screenshot', 'bot']);
+const captureMethods = new Set<CaptureMethod>(['share', 'paste', 'screenshot', 'bot', 'pdf']);
 
 type ItemRow = {
   id: string;
@@ -59,6 +59,7 @@ export function itemHeading(item: SavedItem): string {
   if (item.sourceUrl && item.sourceUrl.trim().length > 0) return item.sourceUrl;
   if (item.caption && item.caption.trim().length > 0) return item.caption;
   if (item.captureMethod === 'screenshot') return 'Screenshot';
+  if (item.captureMethod === 'pdf') return 'PDF';
   return 'Saved post';
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCaptionSummaryPrompt, buildScreenshotSummaryPrompt, buildSummaryPrompt } from '../ai/prompt';
+import { buildCaptionSummaryPrompt, buildPdfSummaryPrompt, buildScreenshotSummaryPrompt, buildSummaryPrompt } from '../ai/prompt';
 import { parseSummary, statusFromUnderstanding } from '../ai/summary';
 import { PermanentError, WebPageError, failureStatus, limitedCaptionReason, reelFallback } from '../worker/errors';
 
@@ -61,6 +61,15 @@ describe('buildScreenshotSummaryPrompt', () => {
   it('briefs the image and does not ask for a video', () => {
     const prompt = buildScreenshotSummaryPrompt();
     expect(prompt).toContain('attached image');
+    expect(prompt).toContain('not a script');
+    expect(prompt).not.toContain('attached video');
+  });
+});
+
+describe('buildPdfSummaryPrompt', () => {
+  it('briefs the PDF and does not ask for a video', () => {
+    const prompt = buildPdfSummaryPrompt();
+    expect(prompt).toContain('attached PDF');
     expect(prompt).toContain('not a script');
     expect(prompt).not.toContain('attached video');
   });

@@ -1,7 +1,7 @@
-import { summarizeCaption, summarizeReel, summarizeScreenshot } from '../ai/summarize';
+import { summarizeCaption, summarizePdf, summarizeReel, summarizeScreenshot } from '../ai/summarize';
 import { statusFromUnderstanding, type Summary } from '../ai/summary';
 import { downloadReel } from '../sources/reel';
-import { deleteScreenshot, downloadScreenshot } from '../sources/screenshot';
+import { deleteScreenshot, downloadPdf, downloadScreenshot } from '../sources/screenshot';
 import { supabase } from '../supabase';
 import { errorMessage, failureStatus, limitedCaptionReason, reelFallback } from './errors';
 
@@ -10,6 +10,7 @@ export type ClaimedItem = {
   attempts: number;
   media_url: string | null;
   image_path: string | null;
+  capture_method: string | null;
   caption: string | null;
 };
 
@@ -17,7 +18,8 @@ const skipped = new Set<string>();
 
 export async function processItem(item: ClaimedItem): Promise<void> {
   if (item.image_path) {
-    await processScreenshot(item.id, item.image_path);
+    if (item.capture_method === 'pdf') await processPdf(item.id, item.image_path);
+    else await processScreenshot(item.id, item.image_path);
     return;
   }
 
@@ -83,6 +85,28 @@ async function releaseItem(item: ClaimedItem): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+async function processPdf(itemId: string, imagePath: string): Promise<void> {
+  const pdf = await downloadPdf(imagePath);
+  const summary = await summarizePdf(itemId, pdf);
+  if (!summary) {
+    const { error } = await supabase
+      .from('items')
+      .update({
+        status: 'limited',
+        title: 'PDF',
+        summary: 'A summary could not be read from this PDF.',
+        error: 'The summary could not be read',
+        image_path: null,
+      })
+      .eq('id', itemId);
+    if (error) throw new Error(error.message);
+  } else {
+    const status = statusFromUnderstanding(summary.understanding);
+    await writeSummary(itemId, summary, status, status === 'limited' ? summary.missingReason : null, true);
+  }
+  await removeStoredFile(itemId, imagePath);
+}
+
 async function processScreenshot(itemId: string, imagePath: string): Promise<void> {
   const jpeg = await downloadScreenshot(imagePath);
   const summary = await summarizeScreenshot(itemId, jpeg);
@@ -103,11 +127,15 @@ async function processScreenshot(itemId: string, imagePath: string): Promise<voi
     await writeSummary(itemId, summary, status, status === 'limited' ? summary.missingReason : null, true);
   }
 
+  await removeStoredFile(itemId, imagePath);
+}
+
+async function removeStoredFile(itemId: string, imagePath: string): Promise<void> {
   try {
     await deleteScreenshot(imagePath);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('screenshot delete failed', { itemId, message });
+    console.error('stored file delete failed', { itemId, message });
   }
 }
 

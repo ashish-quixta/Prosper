@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { ItemCard } from '@/components/ItemCard';
 import { useItems, type HomeSection } from '@/hooks/useItems';
+import { savePdf } from '@/savePdf';
 import { saveScreenshot } from '@/saveScreenshot';
 import type { SavedItem } from '@/savedItem';
 
@@ -13,9 +14,35 @@ export default function HomeScreen() {
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
   const screenshots = useItems('screenshot');
+  const pdfs = useItems('pdf');
   const instagram = useItems('instagram');
-  const itemsQuery = section === 'screenshot' ? screenshots : instagram;
+  const itemsQuery = section === 'screenshot' ? screenshots : section === 'pdf' ? pdfs : instagram;
   const items = useMemo(() => itemsQuery.data?.pages.flat() ?? [], [itemsQuery.data]);
+
+  async function choosePdf() {
+    const DocumentPicker = await import('expo-document-picker');
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+    const file = picked.assets[0];
+    if (file.mimeType && file.mimeType !== 'application/pdf') {
+      Alert.alert('Could not save', 'Choose a PDF.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await savePdf(file.uri, file.size);
+      await queryClient.invalidateQueries({ queryKey: ['items'] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The PDF could not be saved';
+      Alert.alert('Could not save', message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function choosePhoto() {
     const picked = await ImagePicker.launchImageLibraryAsync({
@@ -67,10 +94,10 @@ export default function HomeScreen() {
       ListHeaderComponent={
         <View className="mb-4">
           <SectionSwitch section={section} onChange={setSection} />
-          {section === 'screenshot' ? (
+          {section === 'screenshot' || section === 'pdf' ? (
             <Pressable
               onPress={() => {
-                void choosePhoto();
+                void (section === 'pdf' ? choosePdf() : choosePhoto());
               }}
               disabled={saving}
               className="mt-4 items-center rounded-2xl bg-blue-700 px-4 py-3 active:bg-blue-800"
@@ -78,14 +105,18 @@ export default function HomeScreen() {
               {saving ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text className="text-base font-semibold text-white">Choose a photo</Text>
+                <Text className="text-base font-semibold text-white">
+                  {section === 'pdf' ? 'Choose a PDF' : 'Choose a photo'}
+                </Text>
               )}
             </Pressable>
           ) : null}
           <Text className="mt-3 text-center text-sm leading-5 text-slate-500">
             {section === 'screenshot'
               ? 'Or share a photo to PROSPOR from another app.'
-              : 'Reels you send to the Instagram bot show up here.'}
+              : section === 'pdf'
+                ? 'Choose a PDF from your phone. The summary appears on the card.'
+                : 'Reels you send to the Instagram bot show up here.'}
           </Text>
         </View>
       }
@@ -123,6 +154,7 @@ function SectionSwitch({
   return (
     <View className="flex-row rounded-2xl bg-blue-50 p-1">
       <SectionButton label="Screenshot" selected={section === 'screenshot'} onPress={() => onChange('screenshot')} />
+      <SectionButton label="PDF" selected={section === 'pdf'} onPress={() => onChange('pdf')} />
       <SectionButton label="Instagram" selected={section === 'instagram'} onPress={() => onChange('instagram')} />
     </View>
   );
@@ -139,21 +171,22 @@ function SectionButton({ label, selected, onPress }: { label: string; selected: 
 }
 
 function EmptySection({ section }: { section: HomeSection }) {
-  const screenshot = section === 'screenshot';
+  const icon = section === 'pdf' ? 'document-text-outline' : section === 'screenshot' ? 'image-outline' : 'logo-instagram';
+  const title = section === 'pdf' ? 'No PDFs yet' : section === 'screenshot' ? 'No screenshots yet' : 'No Instagram saves yet';
+  const body =
+    section === 'pdf'
+      ? 'Choose a PDF from your phone. The summary appears on the card.'
+      : section === 'screenshot'
+        ? 'Choose a photo, or share one into PROSPOR. The summary appears on the card.'
+        : 'Send a reel to the bot. It will show up here.';
   return (
     <View className="items-center px-4 py-8">
       <View className="items-center rounded-3xl border border-blue-100 bg-blue-50 px-6 py-10">
         <View className="mb-4 h-14 w-14 items-center justify-center rounded-2xl bg-white">
-          <Ionicons name={screenshot ? 'image-outline' : 'logo-instagram'} size={28} color="#1d4ed8" />
+          <Ionicons name={icon} size={28} color="#1d4ed8" />
         </View>
-        <Text className="text-center text-lg font-semibold text-slate-900">
-          {screenshot ? 'No screenshots yet' : 'No Instagram saves yet'}
-        </Text>
-        <Text className="mt-2 text-center text-base leading-6 text-slate-500">
-          {screenshot
-            ? 'Choose a photo, or share one into PROSPOR. The summary appears on the card.'
-            : 'Send a reel to the bot. It will show up here.'}
-        </Text>
+        <Text className="text-center text-lg font-semibold text-slate-900">{title}</Text>
+        <Text className="mt-2 text-center text-base leading-6 text-slate-500">{body}</Text>
       </View>
     </View>
   );
