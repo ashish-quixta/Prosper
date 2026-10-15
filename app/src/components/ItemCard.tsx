@@ -42,14 +42,21 @@ export function ItemCard({ item }: { item: SavedItem }) {
 function cardLabel(item: SavedItem): string {
   if (item.captureMethod === 'screenshot') return 'Screenshot';
   if (item.captureMethod === 'pdf') return 'PDF';
+  if (item.captureMethod === 'audio') return 'Voice';
   return platformLabel(item.platform);
 }
 
 function PlatformMark({ item }: { item: SavedItem }) {
-  if (item.captureMethod === 'screenshot' || item.captureMethod === 'pdf') {
+  if (item.captureMethod === 'screenshot' || item.captureMethod === 'pdf' || item.captureMethod === 'audio') {
+    const icon =
+      item.captureMethod === 'pdf'
+        ? 'document-text-outline'
+        : item.captureMethod === 'audio'
+          ? 'mic-outline'
+          : 'image-outline';
     return (
       <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">
-        <Ionicons name={item.captureMethod === 'pdf' ? 'document-text-outline' : 'image-outline'} size={16} color="#1d4ed8" />
+        <Ionicons name={icon} size={16} color="#1d4ed8" />
       </View>
     );
   }

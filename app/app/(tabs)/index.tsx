@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { ItemCard } from '@/components/ItemCard';
 import { useItems, type HomeSection } from '@/hooks/useItems';
+import { saveAudio } from '@/saveAudio';
 import { savePdf } from '@/savePdf';
 import { saveScreenshot } from '@/saveScreenshot';
 import type { SavedItem } from '@/savedItem';
@@ -15,8 +16,10 @@ export default function HomeScreen() {
   const queryClient = useQueryClient();
   const screenshots = useItems('screenshot');
   const pdfs = useItems('pdf');
+  const audio = useItems('audio');
   const instagram = useItems('instagram');
-  const itemsQuery = section === 'screenshot' ? screenshots : section === 'pdf' ? pdfs : instagram;
+  const itemsQuery =
+    section === 'screenshot' ? screenshots : section === 'pdf' ? pdfs : section === 'audio' ? audio : instagram;
   const items = useMemo(() => itemsQuery.data?.pages.flat() ?? [], [itemsQuery.data]);
 
   async function choosePdf() {
@@ -38,6 +41,31 @@ export default function HomeScreen() {
       await queryClient.invalidateQueries({ queryKey: ['items'] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'The PDF could not be saved';
+      Alert.alert('Could not save', message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function chooseAudio() {
+    const DocumentPicker = await import('expo-document-picker');
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: ['audio/*'],
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+    const file = picked.assets[0];
+    if (file.mimeType && !file.mimeType.startsWith('audio/')) {
+      Alert.alert('Could not save', 'Choose a voice note audio file.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await saveAudio(file.uri, file.mimeType, file.size);
+      await queryClient.invalidateQueries({ queryKey: ['items'] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The voice note could not be saved';
       Alert.alert('Could not save', message);
     } finally {
       setSaving(false);
@@ -94,10 +122,10 @@ export default function HomeScreen() {
       ListHeaderComponent={
         <View className="mb-4">
           <SectionSwitch section={section} onChange={setSection} />
-          {section === 'screenshot' || section === 'pdf' ? (
+          {section === 'screenshot' || section === 'pdf' || section === 'audio' ? (
             <Pressable
               onPress={() => {
-                void (section === 'pdf' ? choosePdf() : choosePhoto());
+                void (section === 'pdf' ? choosePdf() : section === 'audio' ? chooseAudio() : choosePhoto());
               }}
               disabled={saving}
               className="mt-4 items-center rounded-2xl bg-blue-700 px-4 py-3 active:bg-blue-800"
@@ -106,18 +134,12 @@ export default function HomeScreen() {
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text className="text-base font-semibold text-white">
-                  {section === 'pdf' ? 'Choose a PDF' : 'Choose a photo'}
+                  {section === 'pdf' ? 'Choose a PDF' : section === 'audio' ? 'Choose a voice note' : 'Choose a photo'}
                 </Text>
               )}
             </Pressable>
           ) : null}
-          <Text className="mt-3 text-center text-sm leading-5 text-slate-500">
-            {section === 'screenshot'
-              ? 'Or share a photo to PROSPOR from another app.'
-              : section === 'pdf'
-                ? 'Choose a PDF from your phone. The summary appears on the card.'
-                : 'Reels you send to the Instagram bot show up here.'}
-          </Text>
+          <Text className="mt-3 text-center text-sm leading-5 text-slate-500">{helperText(section)}</Text>
         </View>
       }
       ListEmptyComponent={<EmptySection section={section} />}
@@ -144,6 +166,13 @@ export default function HomeScreen() {
   );
 }
 
+function helperText(section: HomeSection): string {
+  if (section === 'screenshot') return 'Or share a photo to PROSPOR from another app.';
+  if (section === 'pdf') return 'Choose a PDF from your phone. The summary appears on the card.';
+  if (section === 'audio') return 'Choose a voice note from your phone. The summary appears on the card.';
+  return 'Reels you send to the Instagram bot show up here.';
+}
+
 function SectionSwitch({
   section,
   onChange,
@@ -155,6 +184,7 @@ function SectionSwitch({
     <View className="flex-row rounded-2xl bg-blue-50 p-1">
       <SectionButton label="Screenshot" selected={section === 'screenshot'} onPress={() => onChange('screenshot')} />
       <SectionButton label="PDF" selected={section === 'pdf'} onPress={() => onChange('pdf')} />
+      <SectionButton label="Voice" selected={section === 'audio'} onPress={() => onChange('audio')} />
       <SectionButton label="Instagram" selected={section === 'instagram'} onPress={() => onChange('instagram')} />
     </View>
   );
@@ -171,14 +201,30 @@ function SectionButton({ label, selected, onPress }: { label: string; selected: 
 }
 
 function EmptySection({ section }: { section: HomeSection }) {
-  const icon = section === 'pdf' ? 'document-text-outline' : section === 'screenshot' ? 'image-outline' : 'logo-instagram';
-  const title = section === 'pdf' ? 'No PDFs yet' : section === 'screenshot' ? 'No screenshots yet' : 'No Instagram saves yet';
+  const icon =
+    section === 'pdf'
+      ? 'document-text-outline'
+      : section === 'audio'
+        ? 'mic-outline'
+        : section === 'screenshot'
+          ? 'image-outline'
+          : 'logo-instagram';
+  const title =
+    section === 'pdf'
+      ? 'No PDFs yet'
+      : section === 'audio'
+        ? 'No voice notes yet'
+        : section === 'screenshot'
+          ? 'No screenshots yet'
+          : 'No Instagram saves yet';
   const body =
     section === 'pdf'
       ? 'Choose a PDF from your phone. The summary appears on the card.'
-      : section === 'screenshot'
-        ? 'Choose a photo, or share one into PROSPOR. The summary appears on the card.'
-        : 'Send a reel to the bot. It will show up here.';
+      : section === 'audio'
+        ? 'Choose a voice note from your phone. The summary appears on the card.'
+        : section === 'screenshot'
+          ? 'Choose a photo, or share one into PROSPOR. The summary appears on the card.'
+          : 'Send a reel to the bot. It will show up here.';
   return (
     <View className="items-center px-4 py-8">
       <View className="items-center rounded-3xl border border-blue-100 bg-blue-50 px-6 py-10">

@@ -6,7 +6,7 @@ const pageSize = 30;
 const columns =
   'id, platform, capture_method, source_url, caption, status, title, summary, key_points, tags, created_at';
 
-export type HomeSection = 'screenshot' | 'pdf' | 'instagram';
+export type HomeSection = 'screenshot' | 'pdf' | 'audio' | 'instagram';
 
 export function useItems(section: HomeSection) {
   return useInfiniteQuery({

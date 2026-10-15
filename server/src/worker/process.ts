@@ -1,7 +1,7 @@
-import { summarizeCaption, summarizePdf, summarizeReel, summarizeScreenshot } from '../ai/summarize';
+import { summarizeAudio, summarizeCaption, summarizePdf, summarizeReel, summarizeScreenshot } from '../ai/summarize';
 import { statusFromUnderstanding, type Summary } from '../ai/summary';
 import { downloadReel } from '../sources/reel';
-import { deleteScreenshot, downloadPdf, downloadScreenshot } from '../sources/screenshot';
+import { deleteScreenshot, downloadAudio, downloadPdf, downloadScreenshot } from '../sources/screenshot';
 import { supabase } from '../supabase';
 import { errorMessage, failureStatus, limitedCaptionReason, reelFallback } from './errors';
 
@@ -19,6 +19,7 @@ const skipped = new Set<string>();
 export async function processItem(item: ClaimedItem): Promise<void> {
   if (item.image_path) {
     if (item.capture_method === 'pdf') await processPdf(item.id, item.image_path);
+    else if (item.capture_method === 'audio') await processAudio(item.id, item.image_path);
     else await processScreenshot(item.id, item.image_path);
     return;
   }
@@ -95,6 +96,28 @@ async function processPdf(itemId: string, imagePath: string): Promise<void> {
         status: 'limited',
         title: 'PDF',
         summary: 'A summary could not be read from this PDF.',
+        error: 'The summary could not be read',
+        image_path: null,
+      })
+      .eq('id', itemId);
+    if (error) throw new Error(error.message);
+  } else {
+    const status = statusFromUnderstanding(summary.understanding);
+    await writeSummary(itemId, summary, status, status === 'limited' ? summary.missingReason : null, true);
+  }
+  await removeStoredFile(itemId, imagePath);
+}
+
+async function processAudio(itemId: string, imagePath: string): Promise<void> {
+  const audio = await downloadAudio(imagePath);
+  const summary = await summarizeAudio(itemId, audio);
+  if (!summary) {
+    const { error } = await supabase
+      .from('items')
+      .update({
+        status: 'limited',
+        title: 'Voice note',
+        summary: 'A summary could not be read from this voice note.',
         error: 'The summary could not be read',
         image_path: null,
       })

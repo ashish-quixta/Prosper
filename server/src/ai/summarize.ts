@@ -9,9 +9,10 @@ import {
   type Part,
 } from '@google/genai';
 import { env } from '../env';
-import { buildCaptionSummaryPrompt, buildPdfSummaryPrompt, buildScreenshotSummaryPrompt, buildSummaryPrompt } from './prompt';
+import { buildAudioSummaryPrompt, buildCaptionSummaryPrompt, buildPdfSummaryPrompt, buildScreenshotSummaryPrompt, buildSummaryPrompt } from './prompt';
 import { parseSummary, summaryJsonSchema, type Summary } from './summary';
 import { reelDelivery, type ReelVideo } from '../sources/reel';
+import type { StoredAudio } from '../sources/screenshot';
 
 const FILE_READY_MS = 120_000;
 
@@ -88,6 +89,31 @@ export async function summarizePdf(itemId: string, pdf: Buffer): Promise<Summary
     const response = await ai.models.generateContent({
       model: env.GEMINI_MODEL_LITE,
       contents: [{ text: buildPdfSummaryPrompt() }, pdfPart],
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: summaryJsonSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        maxOutputTokens: 2048,
+      },
+    });
+    logSummary(itemId, env.GEMINI_MODEL_LITE, response.usageMetadata);
+    const summary = parseSummary(response.text ?? '');
+    if (summary) return summary;
+  }
+  return null;
+}
+
+export async function summarizeAudio(itemId: string, audio: StoredAudio): Promise<Summary | null> {
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL_LITE) {
+    throw new Error('missing GEMINI_API_KEY or GEMINI_MODEL_LITE');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  const audioPart = createPartFromBase64(audio.bytes.toString('base64'), audio.mimeType);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await ai.models.generateContent({
+      model: env.GEMINI_MODEL_LITE,
+      contents: [{ text: buildAudioSummaryPrompt() }, audioPart],
       config: {
         responseMimeType: 'application/json',
         responseJsonSchema: summaryJsonSchema,
