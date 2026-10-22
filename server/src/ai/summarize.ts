@@ -9,10 +9,21 @@ import {
   type Part,
 } from '@google/genai';
 import { env } from '../env';
-import { buildAudioSummaryPrompt, buildCaptionSummaryPrompt, buildPdfSummaryPrompt, buildScreenshotSummaryPrompt, buildSummaryPrompt } from './prompt';
-import { parseSummary, summaryJsonSchema, type Summary } from './summary';
+import type { XPost } from '../sources/x';
+import {
+  buildAudioSummaryPrompt,
+  buildCaptionSummaryPrompt,
+  buildPdfSummaryPrompt,
+  buildScreenshotSummaryPrompt,
+  buildSummaryPrompt,
+  buildLinkedInSummaryPrompt,
+  buildXSummaryPrompt,
+  buildYoutubeSummaryPrompt,
+} from './prompt';
+import { parseSummary, summaryJsonSchema, youtubeSummaryJsonSchema, type Summary } from './summary';
 import { reelDelivery, type ReelVideo } from '../sources/reel';
 import type { StoredAudio } from '../sources/screenshot';
+import { chaptersFromModel, type YouTubeChapter, type YouTubeDetails } from '../sources/youtube';
 
 const FILE_READY_MS = 120_000;
 
@@ -124,6 +135,106 @@ export async function summarizeAudio(itemId: string, audio: StoredAudio): Promis
     logSummary(itemId, env.GEMINI_MODEL_LITE, response.usageMetadata);
     const summary = parseSummary(response.text ?? '');
     if (summary) return summary;
+  }
+  return null;
+}
+
+export async function summarizeLinkedInText(
+  itemId: string,
+  text: string,
+  source: 'preview' | 'pasted',
+): Promise<Summary | null> {
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL_LITE) {
+    throw new Error('missing GEMINI_API_KEY or GEMINI_MODEL_LITE');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await ai.models.generateContent({
+      model: env.GEMINI_MODEL_LITE,
+      contents: buildLinkedInSummaryPrompt(text, source),
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: summaryJsonSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        maxOutputTokens: 2048,
+      },
+    });
+    logSummary(itemId, env.GEMINI_MODEL_LITE, response.usageMetadata);
+    const summary = parseSummary(response.text ?? '');
+    if (summary) return summary;
+  }
+  return null;
+}
+
+export async function summarizeX(itemId: string, post: XPost): Promise<Summary | null> {
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL_LITE) {
+    throw new Error('missing GEMINI_API_KEY or GEMINI_MODEL_LITE');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await ai.models.generateContent({
+      model: env.GEMINI_MODEL_LITE,
+      contents: buildXSummaryPrompt({
+        author: post.authorUsername ? `${post.authorName} (@${post.authorUsername})` : post.authorName,
+        text: post.text,
+        hasVideo: post.hasVideo,
+        replies: post.replies.map((reply) => ({
+          author: reply.authorUsername ? `@${reply.authorUsername}` : reply.authorName,
+          text: reply.text,
+        })),
+      }),
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: summaryJsonSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        maxOutputTokens: 2048,
+      },
+    });
+    logSummary(itemId, env.GEMINI_MODEL_LITE, response.usageMetadata);
+    const summary = parseSummary(response.text ?? '');
+    if (summary) return summary;
+  }
+  return null;
+}
+
+export async function summarizeYoutube(
+  itemId: string,
+  details: YouTubeDetails,
+  withChapters: boolean,
+): Promise<(Summary & { chapters: YouTubeChapter[] }) | null> {
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL) {
+    throw new Error('missing GEMINI_API_KEY or GEMINI_MODEL');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  const videoPart = { fileData: { fileUri: details.watchUrl } };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await ai.models.generateContent({
+      model: env.GEMINI_MODEL,
+      contents: [
+        videoPart,
+        {
+          text: buildYoutubeSummaryPrompt({
+            title: details.title,
+            channelTitle: details.channelTitle,
+            description: details.description,
+            withChapters,
+          }),
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: withChapters ? youtubeSummaryJsonSchema : summaryJsonSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        maxOutputTokens: withChapters ? 3072 : 2048,
+      },
+    });
+    logSummary(itemId, env.GEMINI_MODEL, response.usageMetadata);
+    const summary = parseSummary(response.text ?? '');
+    if (!summary) continue;
+    return { ...summary, chapters: withChapters ? chaptersFromModel(response.text ?? '') : [] };
   }
   return null;
 }

@@ -5,6 +5,8 @@ import {
   buildPdfSummaryPrompt,
   buildScreenshotSummaryPrompt,
   buildSummaryPrompt,
+  buildXSummaryPrompt,
+  buildYoutubeSummaryPrompt,
 } from '../ai/prompt';
 import { parseSummary, statusFromUnderstanding } from '../ai/summary';
 import { PermanentError, WebPageError, failureStatus, limitedCaptionReason, reelFallback } from '../worker/errors';
@@ -87,6 +89,46 @@ describe('buildAudioSummaryPrompt', () => {
     expect(prompt).toContain('attached audio');
     expect(prompt).toContain('not a script');
     expect(prompt).not.toContain('attached video');
+  });
+});
+
+describe('buildYoutubeSummaryPrompt', () => {
+  it('briefs the YouTube video with title and channel context', () => {
+    const prompt = buildYoutubeSummaryPrompt({
+      title: 'How to ship faster',
+      channelTitle: 'Build Tips',
+      description: 'A short video about shipping',
+    });
+    expect(prompt).toContain('attached YouTube video');
+    expect(prompt).toContain('How to ship faster');
+    expect(prompt).toContain('Build Tips');
+    expect(prompt).toContain('not a script');
+    expect(prompt).not.toContain('chapters lists moments');
+  });
+
+  it('asks for timestamps only when the video needs a timeline', () => {
+    const prompt = buildYoutubeSummaryPrompt({
+      title: 'A long interview',
+      channelTitle: 'Build Tips',
+      description: 'No chapters here',
+      withChapters: true,
+    });
+    expect(prompt).toContain('chapters lists moments');
+    expect(prompt).toContain('4:10');
+  });
+});
+
+describe('buildXSummaryPrompt', () => {
+  it('includes the post and tells the model not to invent replies', () => {
+    const prompt = buildXSummaryPrompt({
+      author: 'Quixta (@quixta)',
+      text: 'Ship the briefing',
+      hasVideo: false,
+      replies: [{ author: '@reader', text: 'The date is Friday' }],
+    });
+    expect(prompt).toContain('Ship the briefing');
+    expect(prompt).toContain('@reader: The date is Friday');
+    expect(prompt).toContain('do not mention comments');
   });
 });
 

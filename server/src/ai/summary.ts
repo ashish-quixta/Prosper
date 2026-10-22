@@ -13,6 +13,29 @@ export const summaryJsonSchema = {
   required: ['title', 'summary', 'keyPoints', 'tags', 'understanding', 'missingReason'],
 } as const;
 
+export const youtubeChapterJsonSchema = {
+  type: 'object',
+  properties: {
+    at: { type: 'string' },
+    label: { type: 'string' },
+  },
+  required: ['at', 'label'],
+} as const;
+
+export const youtubeSummaryJsonSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    summary: { type: 'string' },
+    keyPoints: { type: 'array', items: { type: 'string' } },
+    tags: { type: 'array', items: { type: 'string' } },
+    understanding: { type: 'string', enum: ['full', 'partial', 'none'] },
+    missingReason: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    chapters: { type: 'array', items: youtubeChapterJsonSchema },
+  },
+  required: ['title', 'summary', 'keyPoints', 'tags', 'understanding', 'missingReason', 'chapters'],
+} as const;
+
 const SummaryOutput = z.object({
   title: z.string().min(1).max(80),
   summary: z.string().min(1),

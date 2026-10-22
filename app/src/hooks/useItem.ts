@@ -3,7 +3,7 @@ import { supabase } from '@/supabase';
 import { savedItemFromRow } from '@/savedItem';
 
 const columns =
-  'id, platform, capture_method, source_url, caption, status, title, summary, key_points, tags, created_at';
+  'id, platform, capture_method, source_url, caption, status, title, summary, key_points, tags, folder_id, youtube_kind, created_at';
 
 export function useItem(id: string) {
   return useQuery({

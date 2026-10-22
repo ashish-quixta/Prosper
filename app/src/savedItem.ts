@@ -1,7 +1,8 @@
-export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'other';
+export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'youtube' | 'other';
 export type ItemStatus = 'saving' | 'summarising' | 'ready' | 'limited' | 'failed';
 
-export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot' | 'pdf' | 'audio';
+export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot' | 'pdf' | 'audio' | 'doc' | 'slides';
+export type YouTubeKind = 'short' | 'video' | 'podcast';
 
 export type SavedItem = {
   id: string;
@@ -14,10 +15,12 @@ export type SavedItem = {
   summary: string | null;
   keyPoints: string[];
   tags: string[];
+  folderId: string | null;
+  youtubeKind: YouTubeKind | null;
   createdAt: string;
 };
 
-const captureMethods = new Set<CaptureMethod>(['share', 'paste', 'screenshot', 'bot', 'pdf', 'audio']);
+const captureMethods = new Set<CaptureMethod>(['share', 'paste', 'screenshot', 'bot', 'pdf', 'audio', 'doc', 'slides']);
 
 type ItemRow = {
   id: string;
@@ -30,10 +33,13 @@ type ItemRow = {
   summary: string | null;
   key_points: unknown;
   tags: string[] | null;
+  folder_id: string | null;
+  youtube_kind: string | null;
   created_at: string;
 };
 
-const platforms = new Set<Platform>(['instagram', 'reddit', 'x', 'linkedin', 'other']);
+const platforms = new Set<Platform>(['instagram', 'reddit', 'x', 'linkedin', 'youtube', 'other']);
+const youtubeKinds = new Set<YouTubeKind>(['short', 'video', 'podcast']);
 const statuses = new Set<ItemStatus>(['saving', 'summarising', 'ready', 'limited', 'failed']);
 
 export function savedItemFromRow(row: ItemRow): SavedItem {
@@ -50,6 +56,8 @@ export function savedItemFromRow(row: ItemRow): SavedItem {
     summary: row.summary,
     keyPoints: stringList(row.key_points),
     tags: stringList(row.tags),
+    folderId: row.folder_id,
+    youtubeKind: youtubeKinds.has(row.youtube_kind as YouTubeKind) ? (row.youtube_kind as YouTubeKind) : null,
     createdAt: row.created_at,
   };
 }
@@ -61,6 +69,8 @@ export function itemHeading(item: SavedItem): string {
   if (item.captureMethod === 'screenshot') return 'Screenshot';
   if (item.captureMethod === 'pdf') return 'PDF';
   if (item.captureMethod === 'audio') return 'Voice note';
+  if (item.captureMethod === 'doc') return 'Google Doc';
+  if (item.captureMethod === 'slides') return 'Google Slides';
   return 'Saved post';
 }
 
@@ -69,6 +79,7 @@ export function platformLabel(platform: Platform): string {
   if (platform === 'reddit') return 'Reddit';
   if (platform === 'x') return 'X';
   if (platform === 'linkedin') return 'LinkedIn';
+  if (platform === 'youtube') return 'YouTube';
   return 'Other';
 }
 

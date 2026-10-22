@@ -15,12 +15,14 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
   GEMINI_MODEL_LITE: z.string().optional(),
+  YOUTUBE_API_KEY: z.string().optional(),
   X_BEARER_TOKEN: z.string().optional(),
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
   META_VERIFY_TOKEN: z.string().optional(),
   IG_ACCESS_TOKEN: z.string().optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  LINKEDIN_PREVIEW_FETCH_ENABLED: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

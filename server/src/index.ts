@@ -37,6 +37,14 @@ if (missingGemini.length > 0) {
   console.error(`missing ${missingGemini.join(', ')}`);
 }
 
+if (!env.YOUTUBE_API_KEY) {
+  console.error('missing YOUTUBE_API_KEY');
+}
+
+if (!env.X_BEARER_TOKEN) {
+  console.error('missing X_BEARER_TOKEN');
+}
+
 app.listen(env.PORT, () => {
   console.log(`listening on ${env.PORT}`);
   startWorker();

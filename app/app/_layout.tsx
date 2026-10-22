@@ -6,6 +6,7 @@ import { ShareIntentProvider } from 'expo-share-intent';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { OpeningScreen } from '@/components/OpeningScreen';
+import { LibraryProvider } from '@/library';
 import { IncomingScreenshot } from '@/share';
 import { supabase } from '@/supabase';
 import '../global.css';
@@ -53,6 +54,7 @@ export default function RootLayout() {
     <View className="flex-1">
       <ShareIntentProvider options={{ resetOnBackground: false }}>
         <QueryClientProvider client={queryClient}>
+          <LibraryProvider>
           <AuthGate>
             <IncomingScreenshot />
             <StatusBar style={showIntro ? 'light' : 'dark'} />
@@ -69,6 +71,7 @@ export default function RootLayout() {
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             </Stack>
           </AuthGate>
+          </LibraryProvider>
         </QueryClientProvider>
       </ShareIntentProvider>
       {showIntro ? <OpeningScreen onFinish={() => setShowIntro(false)} /> : null}
