@@ -5,6 +5,7 @@ import {
   summarizeReel,
   summarizeLinkedInText,
   summarizeScreenshot,
+  summarizeSpotify,
   summarizeX,
   summarizeYoutube,
 } from '../ai/summarize';
@@ -28,7 +29,10 @@ import {
 } from '../sources/youtube';
 import { supabase } from '../supabase';
 import { linkedinLinkFromText } from '../linkedinUrl';
+import { fetchSpotifyEpisode, spotifyEpisodeCaption } from '../sources/spotify';
+import { findYouTubeForEpisode } from '../sources/youtubeChannel';
 import { fetchXPost, xPostCaption } from '../sources/x';
+import { spotifyLinkFromText } from '../spotifyUrl';
 import { xLinkFromText } from '../xUrl';
 import { youtubeLinkFromText } from '../youtubeUrl';
 import { errorMessage, failureStatus, limitedCaptionReason, PermanentError, reelFallback } from './errors';
@@ -71,6 +75,11 @@ export async function processItem(item: ClaimedItem): Promise<void> {
 
   if (item.source_url && (item.platform === 'x' || xLinkFromText(item.source_url))) {
     await processX(item.id, item.source_url);
+    return;
+  }
+
+  if (item.source_url && (item.platform === 'spotify' || spotifyLinkFromText(item.source_url))) {
+    await processSpotify(item.id, item.source_url);
     return;
   }
 
@@ -224,6 +233,41 @@ async function processX(itemId: string, sourceUrl: string): Promise<void> {
     source_url: post.url,
     titleFallback: fallback,
     platform: 'x',
+  });
+}
+
+async function processSpotify(itemId: string, sourceUrl: string): Promise<void> {
+  const episode = await fetchSpotifyEpisode(sourceUrl);
+  const youtubeChannel = await findYouTubeForEpisode(
+    episode.name,
+    episode.showName,
+    episode.showPublisher,
+    `${episode.description}\n${episode.showDescription}`,
+  );
+  const summary = await summarizeSpotify(itemId, episode);
+  const caption = spotifyEpisodeCaption(episode, youtubeChannel);
+  if (!summary) {
+    const { error } = await supabase
+      .from('items')
+      .update({
+        status: 'limited',
+        title: episode.name.slice(0, 80),
+        caption,
+        summary: 'The episode details were saved, but a briefing could not be read.',
+        error: 'SUMMARY_FAILED',
+        source_url: episode.url,
+        platform: 'spotify',
+      })
+      .eq('id', itemId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  await writeSummary(itemId, summary, 'limited', 'The briefing is from the public episode description.', false, {
+    caption,
+    source_url: episode.url,
+    titleFallback: episode.name.slice(0, 80),
+    platform: 'spotify',
   });
 }
 
@@ -427,7 +471,12 @@ async function writeSummary(
   status: 'ready' | 'limited',
   error: string | null,
   clearImage = false,
-  extras?: { caption?: string; source_url?: string; titleFallback?: string; platform?: 'youtube' | 'linkedin' | 'x' | 'other' },
+  extras?: {
+    caption?: string;
+    source_url?: string;
+    titleFallback?: string;
+    platform?: 'youtube' | 'linkedin' | 'x' | 'spotify' | 'other';
+  },
 ): Promise<void> {
   const { error: writeError } = await supabase
     .from('items')

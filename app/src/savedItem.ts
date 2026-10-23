@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'youtube' | 'other';
+export type Platform = 'instagram' | 'reddit' | 'x' | 'linkedin' | 'youtube' | 'spotify' | 'other';
 export type ItemStatus = 'saving' | 'summarising' | 'ready' | 'limited' | 'failed';
 
 export type CaptureMethod = 'share' | 'paste' | 'screenshot' | 'bot' | 'pdf' | 'audio' | 'doc' | 'slides';
@@ -38,7 +38,7 @@ type ItemRow = {
   created_at: string;
 };
 
-const platforms = new Set<Platform>(['instagram', 'reddit', 'x', 'linkedin', 'youtube', 'other']);
+const platforms = new Set<Platform>(['instagram', 'reddit', 'x', 'linkedin', 'youtube', 'spotify', 'other']);
 const youtubeKinds = new Set<YouTubeKind>(['short', 'video', 'podcast']);
 const statuses = new Set<ItemStatus>(['saving', 'summarising', 'ready', 'limited', 'failed']);
 
@@ -80,6 +80,7 @@ export function platformLabel(platform: Platform): string {
   if (platform === 'x') return 'X';
   if (platform === 'linkedin') return 'LinkedIn';
   if (platform === 'youtube') return 'YouTube';
+  if (platform === 'spotify') return 'Spotify';
   return 'Other';
 }
 

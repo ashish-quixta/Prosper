@@ -13,6 +13,7 @@ import { saveLinkedInLink } from '@/saveLinkedInLink';
 import { savePdf } from '@/savePdf';
 import { saveScreenshot } from '@/saveScreenshot';
 import { saveGoogleFile } from '@/saveGoogleFile';
+import { saveSpotifyLink } from '@/saveSpotifyLink';
 import { saveXLink } from '@/saveXLink';
 import { saveYoutubeLink } from '@/saveYoutubeLink';
 import type { SavedItem } from '@/savedItem';
@@ -88,6 +89,7 @@ export default function HomeScreen() {
       else if (section === 'doc' || section === 'slides') await saveGoogleFile(value, section);
       else if (section === 'linkedin') await saveLinkedInLink(value);
       else if (section === 'x') await saveXLink(value);
+      else if (section === 'spotify') await saveSpotifyLink(value);
       else await saveInstagramLink(value);
       setLinkText('');
       await queryClient.invalidateQueries({ queryKey: ['items'] });
@@ -160,6 +162,7 @@ export default function HomeScreen() {
           {section === 'instagram' ||
           section === 'linkedin' ||
           section === 'x' ||
+          section === 'spotify' ||
           section === 'doc' ||
           section === 'slides' ||
           youtubeKindFromSection(section) ? (
@@ -242,6 +245,7 @@ function linkPlaceholder(section: HomeSection): string {
   if (section === 'slides') return 'Paste a Google Slides link';
   if (section === 'linkedin') return 'Paste a LinkedIn post link';
   if (section === 'x') return 'Paste an X post link';
+  if (section === 'spotify') return 'Paste a Spotify episode link';
   return 'Paste an Instagram post or reel link';
 }
 
@@ -257,6 +261,7 @@ function helperText(section: HomeSection): string {
   if (section === 'slides') return 'Share the deck as Anyone with the link, then paste it.';
   if (section === 'linkedin') return 'Paste a post link. The original post shows in LinkedIn’s embed.';
   if (section === 'x') return 'Paste a post link, or share it from X. A few public replies are included.';
+  if (section === 'spotify') return 'Paste an episode link, or share it from Spotify. The briefing uses the public description.';
   return 'Paste a post or reel link. For the words in the reel, add a screenshot.';
 }
 
@@ -291,6 +296,7 @@ function SectionSwitch({
       <View className="mt-1 flex-row">
         <SectionButton label="Docs" selected={section === 'doc'} onPress={() => onChange('doc')} />
         <SectionButton label="Slides" selected={section === 'slides'} onPress={() => onChange('slides')} />
+        <SectionButton label="Spotify" selected={section === 'spotify'} onPress={() => onChange('spotify')} />
       </View>
     </View>
   );
@@ -318,7 +324,9 @@ function EmptySection({ section }: { section: HomeSection }) {
             ? 'document-text-outline'
             : youtubeKindFromSection(section)
             ? 'logo-youtube'
-            : section === 'x'
+            : section === 'spotify'
+              ? 'musical-notes'
+              : section === 'x'
               ? 'logo-twitter'
               : section === 'linkedin'
               ? 'logo-linkedin'
@@ -340,6 +348,8 @@ function EmptySection({ section }: { section: HomeSection }) {
                   ? 'No Google Docs yet'
                   : section === 'slides'
                     ? 'No Google Slides yet'
+                : section === 'spotify'
+                  ? 'No Spotify episodes yet'
                 : section === 'x'
                   ? 'No X posts yet'
                 : section === 'linkedin'
@@ -356,6 +366,8 @@ function EmptySection({ section }: { section: HomeSection }) {
             ? 'Share the file as Anyone with the link, then paste it. The briefing appears on the card.'
             : youtubeKindFromSection(section)
             ? 'Paste a link for this YouTube section. The briefing appears on the card.'
+            : section === 'spotify'
+              ? 'Paste a Spotify episode link, or share one from Spotify. The briefing uses the public description.'
             : section === 'x'
               ? 'Paste an X post link, or share one from X. The briefing includes a few public replies.'
             : section === 'linkedin'

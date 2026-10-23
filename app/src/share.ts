@@ -6,9 +6,11 @@ import { linkedinLinkFromText } from '@/linkedinUrl';
 import { saveInstagramLink } from '@/saveInstagramLink';
 import { saveLinkedInLink } from '@/saveLinkedInLink';
 import { saveScreenshot } from '@/saveScreenshot';
+import { saveSpotifyLink } from '@/saveSpotifyLink';
 import { saveXLink } from '@/saveXLink';
 import { refreshLibrary } from '@/library';
 import { saveYoutubeLink } from '@/saveYoutubeLink';
+import { spotifyLinkFromText } from '@/spotifyUrl';
 import { xLinkFromText } from '@/xUrl';
 import { youtubeLinkFromText } from '@/youtubeUrl';
 import { supabase } from '@/supabase';
@@ -43,7 +45,9 @@ export function IncomingScreenshot() {
         ? saveYoutubeLink(sharedText, sharedYouTube.isShort ? 'short' : 'video')
         : xLinkFromText(sharedText)
           ? saveXLink(sharedText, 'share')
-          : linkedinLinkFromText(sharedText)
+          : spotifyLinkFromText(sharedText)
+            ? saveSpotifyLink(sharedText, 'share')
+            : linkedinLinkFromText(sharedText)
             ? saveLinkedInLink(sharedText)
             : saveInstagramLink(sharedText);
     void save

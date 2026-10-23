@@ -18,6 +18,7 @@ const sections: { id: HomeSection; label: string }[] = [
   { id: 'youtube-podcast', label: 'YouTube podcasts' },
   { id: 'linkedin', label: 'LinkedIn' },
   { id: 'x', label: 'X' },
+  { id: 'spotify', label: 'Spotify' },
   { id: 'doc', label: 'Google Docs' },
   { id: 'slides', label: 'Google Slides' },
 ];

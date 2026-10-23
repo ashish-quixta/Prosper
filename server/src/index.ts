@@ -45,6 +45,10 @@ if (!env.X_BEARER_TOKEN) {
   console.error('missing X_BEARER_TOKEN');
 }
 
+if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) {
+  console.error('missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET');
+}
+
 app.listen(env.PORT, () => {
   console.log(`listening on ${env.PORT}`);
   startWorker();

@@ -9,6 +9,7 @@ import {
   type Part,
 } from '@google/genai';
 import { env } from '../env';
+import type { SpotifyEpisode } from '../sources/spotify';
 import type { XPost } from '../sources/x';
 import {
   buildAudioSummaryPrompt,
@@ -17,6 +18,7 @@ import {
   buildScreenshotSummaryPrompt,
   buildSummaryPrompt,
   buildLinkedInSummaryPrompt,
+  buildSpotifySummaryPrompt,
   buildXSummaryPrompt,
   buildYoutubeSummaryPrompt,
 } from './prompt';
@@ -153,6 +155,35 @@ export async function summarizeLinkedInText(
     const response = await ai.models.generateContent({
       model: env.GEMINI_MODEL_LITE,
       contents: buildLinkedInSummaryPrompt(text, source),
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: summaryJsonSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+        maxOutputTokens: 2048,
+      },
+    });
+    logSummary(itemId, env.GEMINI_MODEL_LITE, response.usageMetadata);
+    const summary = parseSummary(response.text ?? '');
+    if (summary) return summary;
+  }
+  return null;
+}
+
+export async function summarizeSpotify(itemId: string, episode: SpotifyEpisode): Promise<Summary | null> {
+  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL_LITE) {
+    throw new Error('missing GEMINI_API_KEY or GEMINI_MODEL_LITE');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await ai.models.generateContent({
+      model: env.GEMINI_MODEL_LITE,
+      contents: buildSpotifySummaryPrompt({
+        name: episode.name,
+        showName: episode.showName,
+        description: episode.description,
+        showDescription: episode.showDescription,
+      }),
       config: {
         responseMimeType: 'application/json',
         responseJsonSchema: summaryJsonSchema,

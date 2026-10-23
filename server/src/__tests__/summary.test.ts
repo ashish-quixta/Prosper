@@ -5,6 +5,7 @@ import {
   buildPdfSummaryPrompt,
   buildScreenshotSummaryPrompt,
   buildSummaryPrompt,
+  buildSpotifySummaryPrompt,
   buildXSummaryPrompt,
   buildYoutubeSummaryPrompt,
 } from '../ai/prompt';
@@ -115,6 +116,19 @@ describe('buildYoutubeSummaryPrompt', () => {
     });
     expect(prompt).toContain('chapters lists moments');
     expect(prompt).toContain('4:10');
+  });
+});
+
+describe('buildSpotifySummaryPrompt', () => {
+  it('briefs the public description and does not claim a transcript', () => {
+    const prompt = buildSpotifySummaryPrompt({
+      name: 'How systems fail',
+      showName: 'Design Notes',
+      description: 'A conversation about outages',
+    });
+    expect(prompt).toContain('A conversation about outages');
+    expect(prompt).toContain('public episode description');
+    expect(prompt).toContain('partial');
   });
 });
 

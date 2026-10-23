@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractYouTubeUrl, getVideoId, isShortsUrl, youtubeLinkFromText } from '../youtubeUrl';
+import { extractYouTubeUrl, getVideoId, isShortsUrl, youtubeLinkFromText, youtubeNotesFromText } from '../youtubeUrl';
 import { parseDescriptionChapters, parseIsoDuration, wantsYouTubeChapters } from '../sources/youtube';
 
 describe('youtubeUrl', () => {
@@ -23,6 +23,24 @@ describe('youtubeUrl', () => {
     expect(getVideoId('https://www.youtube.com/@somechannel')).toBeNull();
     expect(getVideoId('https://www.youtube.com/playlist?list=PLtest')).toBeNull();
     expect(youtubeLinkFromText('no link here')).toBeNull();
+  });
+});
+
+describe('youtubeNotesFromText', () => {
+  it('reads a channel link and a video link from show notes', () => {
+    const notes = [
+      'YouTube: https://www.youtube.com/modernwisdompodcast',
+      'Watch https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      'Clips https://www.youtube.com/@rajshamaniclips',
+      'Guest https://www.youtube.com/@MarkBowden1',
+    ].join('\n');
+    const parsed = youtubeNotesFromText(notes);
+    expect(parsed.videoUrls).toEqual(['https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+    expect(parsed.channels).toEqual([
+      { kind: 'handle', value: 'modernwisdompodcast', clip: false },
+      { kind: 'handle', value: 'rajshamaniclips', clip: true },
+      { kind: 'handle', value: 'MarkBowden1', clip: false },
+    ]);
   });
 });
 

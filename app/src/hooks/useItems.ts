@@ -16,6 +16,7 @@ export type HomeSection =
   | 'youtube-podcast'
   | 'linkedin'
   | 'x'
+  | 'spotify'
   | 'doc'
   | 'slides';
 
@@ -34,7 +35,7 @@ export function sectionFilters(section: HomeSection): { column: string; value: s
       { column: 'youtube_kind', value: kind },
     ];
   }
-  if (section === 'instagram' || section === 'linkedin' || section === 'x') {
+  if (section === 'instagram' || section === 'linkedin' || section === 'x' || section === 'spotify') {
     return [{ column: 'platform', value: section }];
   }
   return [{ column: 'capture_method', value: section }];

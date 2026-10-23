@@ -13,6 +13,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { FolderPicker } from '@/components/FolderPicker';
+import { SpotifyEpisode } from '@/components/SpotifyEpisode';
 import { XPost } from '@/components/XPost';
 import { YoutubeFacts } from '@/components/YoutubeFacts';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -69,6 +70,7 @@ export default function ItemScreen() {
         <FolderPicker itemId={item.id} folderId={item.folderId} />
         {item.platform === 'youtube' ? <YoutubeFacts caption={item.caption} /> : null}
         {item.platform === 'x' ? <XPost caption={item.caption} sourceUrl={item.sourceUrl} /> : null}
+        {item.platform === 'spotify' ? <SpotifyEpisode caption={item.caption} sourceUrl={item.sourceUrl} /> : null}
         {item.platform === 'linkedin' && item.sourceUrl ? <LinkedInPost item={item} /> : null}
         {item.summary ? (
           <Text className="mt-6 text-base leading-6 text-slate-700">{item.summary}</Text>

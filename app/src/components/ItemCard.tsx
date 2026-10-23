@@ -91,6 +91,14 @@ function PlatformMark({ item }: { item: SavedItem }) {
   }
 
   const platform = item.platform;
+  if (platform === 'spotify') {
+    return (
+      <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">
+        <Ionicons name="musical-notes" size={16} color="#1d4ed8" />
+      </View>
+    );
+  }
+
   if (platform === 'x') {
     return (
       <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-50">
